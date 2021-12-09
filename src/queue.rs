@@ -20,7 +20,7 @@ impl<'a, T> Queue<'a, T>
 where
     T: Sized + Default + Copy + Clone,
 {
-    fn new(name: &str) -> Queue<'a, T> {
+    pub fn new(name: &str) -> Queue<'a, T> {
         let buffer_size = size_of::<QueueEntry<T>>() + size_of::<AtomicUsize>() * 2;
         let inner = shmem::create_shm(name, buffer_size);
 
@@ -42,7 +42,7 @@ where
         unsafe { (*self.tail).load(Ordering::Acquire) }
     }
 
-    fn enqueue(&self, value: T) -> bool {
+    pub fn enqueue(&self, value: T) -> bool {
         let head = self.head();
         let tail = self.tail();
         let next = (head + 1) % QUEUE_SIZE;
@@ -56,7 +56,7 @@ where
         true
     }
 
-    fn deqeue(&self) -> Option<T> {
+    pub fn dequeue(&self) -> Option<T> {
         let head = self.head();
         let tail = self.tail();
 
@@ -110,7 +110,7 @@ mod tests {
         assert_eq!(queue.head(), 1);
         assert_eq!(queue.tail(), 0);
 
-        assert_eq!(queue.deqeue(), Some(1));
+        assert_eq!(queue.dequeue(), Some(1));
         assert_eq!(queue.head(), 1);
         assert_eq!(queue.tail(), 1);
     }
@@ -129,7 +129,7 @@ mod tests {
     #[test]
     fn test_dequeue_empty() {
         let queue = Queue::<i32>::new("test");
-        assert_eq!(queue.deqeue(), None);
+        assert_eq!(queue.dequeue(), None);
     }
 
     #[test]
@@ -141,7 +141,7 @@ mod tests {
         assert_eq!(producer.head(), 1);
         assert_eq!(producer.tail(), 0);
 
-        assert_eq!(consumer.deqeue(), Some(1));
+        assert_eq!(consumer.dequeue(), Some(1));
         assert_eq!(consumer.head(), 1);
         assert_eq!(consumer.tail(), 1);
     }
@@ -165,7 +165,7 @@ mod tests {
         let consumer_thread = std::thread::spawn(move || {
             for i in 0..num_iterations {
                 loop {
-                    if let Some(value) = consumer.deqeue() {
+                    if let Some(value) = consumer.dequeue() {
                         assert_eq!(value, i as i32);
                         break;
                     }

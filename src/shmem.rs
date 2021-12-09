@@ -73,6 +73,7 @@ pub fn create_shm(name: &str, size: usize) -> *mut libc::c_void {
     map(fd, size)
 }
 
+#[allow(dead_code)]
 /// Remove the shared memory object with given name.
 ///
 /// # Arguments
