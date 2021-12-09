@@ -10,3 +10,5 @@ const QUEUE_SIZE: usize = 1024;
 
 mod queue;
 mod shmem;
+
+pub use queue::Queue;

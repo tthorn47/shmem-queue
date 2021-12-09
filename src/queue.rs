@@ -5,11 +5,16 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 type QueueEntry<T> = [Cell<T>; QUEUE_SIZE];
 
-struct Queue<'a, T> {
+pub struct Queue<'a, T> {
     log: &'a QueueEntry<T>,
     head: *const AtomicUsize,
     tail: *const AtomicUsize,
 }
+
+/// This is just to make the compiler happy
+/// when using queue with multiple threads.
+unsafe impl<'a, T> Send for Queue<'a, T> {}
+unsafe impl<'a, T> Sync for Queue<'a, T> {}
 
 impl<'a, T> Queue<'a, T>
 where
@@ -23,10 +28,9 @@ where
         for e in log.iter_mut() {
             *e = Default::default();
         }
-        let head = unsafe { inner.offset(size_of::<QueueEntry<T>>() as isize) } as *mut AtomicUsize;
-        let tail = unsafe {
-            inner.offset((size_of::<QueueEntry<T>>() + size_of::<AtomicUsize>()) as isize)
-        } as *mut AtomicUsize;
+        let head = unsafe { inner.add(size_of::<QueueEntry<T>>()) } as *mut AtomicUsize;
+        let tail = unsafe { inner.add(size_of::<QueueEntry<T>>() + size_of::<AtomicUsize>()) }
+            as *mut AtomicUsize;
         Queue { log, head, tail }
     }
 
@@ -140,5 +144,36 @@ mod tests {
         assert_eq!(consumer.deqeue(), Some(1));
         assert_eq!(consumer.head(), 1);
         assert_eq!(consumer.tail(), 1);
+    }
+
+    #[test]
+    fn test_parallel_client() {
+        let producer = Queue::<i32>::new("test");
+        let consumer = Queue::<i32>::new("test");
+        let num_iterations = 10 * QUEUE_SIZE;
+
+        let producer_thread = std::thread::spawn(move || {
+            for i in 0..num_iterations {
+                loop {
+                    if producer.enqueue(i as i32) {
+                        break;
+                    }
+                }
+            }
+        });
+
+        let consumer_thread = std::thread::spawn(move || {
+            for i in 0..num_iterations {
+                loop {
+                    if let Some(value) = consumer.deqeue() {
+                        assert_eq!(value, i as i32);
+                        break;
+                    }
+                }
+            }
+        });
+
+        producer_thread.join().unwrap();
+        consumer_thread.join().unwrap();
     }
 }
