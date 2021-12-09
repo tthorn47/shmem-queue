@@ -11,3 +11,4 @@ cstr_core = "0.2.4"
 
 [dev-dependencies]
 shmem-queue = { path = "../shmem-queue" }
+nix = "0.23.0"
