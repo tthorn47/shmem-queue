@@ -82,6 +82,5 @@ pub fn destroy_shm(name: &str) {
     let shm_fd = unsafe { libc::shm_unlink(c_name.as_ptr()) };
     if shm_fd < 0 {
         log::error!("shm_unlink failed");
-        
     }
 }
