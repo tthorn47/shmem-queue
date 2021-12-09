@@ -21,10 +21,11 @@ where
         for e in log.iter_mut() {
             *e = Default::default();
         }
-        let head = unsafe { inner.offset(size_of::<[Cell<T>; QUEUE_SIZE]>() as isize) }
+        let head = unsafe { inner.offset(size_of::<[Cell<T>; QUEUE_SIZE]>() as isize) } as *mut _
             as *mut AtomicUsize;
         let tail = unsafe {
             inner.offset((size_of::<[Cell<T>; QUEUE_SIZE]>() + size_of::<AtomicUsize>()) as isize)
+                as *mut _
         } as *mut AtomicUsize;
         Queue { log, head, tail }
     }
@@ -40,17 +41,14 @@ where
     fn enqueue(&self, value: T) -> bool {
         let head = self.head();
         let tail = self.tail();
-
-        if head - tail >= QUEUE_SIZE {
+        let next = (head + 1) % QUEUE_SIZE;
+        if next == tail {
             return false;
         }
-
-        let next_head = (head + 1) % QUEUE_SIZE;
         unsafe {
-            *self.log[head as usize].as_ptr() = value;
-            (&*self.head).store(next_head, Ordering::Release);
+            (*self.log.get_unchecked(head)).set(value);
+            (*self.head).store(next, Ordering::Release);
         }
-
         true
     }
 
@@ -111,5 +109,36 @@ mod tests {
         assert_eq!(queue.deqeue(), Some(1));
         assert_eq!(queue.head(), 1);
         assert_eq!(queue.tail(), 1);
+    }
+
+    #[test]
+    fn test_equeue_full() {
+        let queue = Queue::<i32>::new("test");
+        for i in 0..QUEUE_SIZE - 1 {
+            assert!(queue.enqueue(i as i32));
+        }
+        assert!(queue.tail() == 0);
+        assert!(queue.head() == QUEUE_SIZE - 1);
+        assert!(!queue.enqueue(QUEUE_SIZE as i32));
+    }
+
+    #[test]
+    fn test_dequeue_empty() {
+        let queue = Queue::<i32>::new("test");
+        assert_eq!(queue.deqeue(), None);
+    }
+
+    #[test]
+    fn test_two_clients() {
+        let producer = Queue::<i32>::new("test");
+        let consumer = Queue::<i32>::new("test");
+
+        assert!(producer.enqueue(1));
+        assert_eq!(producer.head(), 1);
+        assert_eq!(producer.tail(), 0);
+
+        assert_eq!(consumer.deqeue(), Some(1));
+        assert_eq!(consumer.head(), 1);
+        assert_eq!(consumer.tail(), 1);
     }
 }
