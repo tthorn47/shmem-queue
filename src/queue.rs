@@ -3,8 +3,10 @@ use core::cell::Cell;
 use core::mem::size_of;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
+type QueueEntry<T> = [Cell<T>; QUEUE_SIZE];
+
 struct Queue<'a, T> {
-    log: &'a [Cell<T>; QUEUE_SIZE],
+    log: &'a QueueEntry<T>,
     head: *const AtomicUsize,
     tail: *const AtomicUsize,
 }
@@ -14,18 +16,16 @@ where
     T: Sized + Default + Copy + Clone,
 {
     fn new(name: &str) -> Queue<'a, T> {
-        let buffer_size = size_of::<[Cell<T>; QUEUE_SIZE]>() + size_of::<AtomicUsize>() * 2;
+        let buffer_size = size_of::<QueueEntry<T>>() + size_of::<AtomicUsize>() * 2;
         let inner = shmem::create_shm(name, buffer_size);
 
-        let log = unsafe { &mut *(inner as *mut [Cell<T>; QUEUE_SIZE]) };
+        let log = unsafe { &mut *(inner as *mut QueueEntry<T>) };
         for e in log.iter_mut() {
             *e = Default::default();
         }
-        let head = unsafe { inner.offset(size_of::<[Cell<T>; QUEUE_SIZE]>() as isize) } as *mut _
-            as *mut AtomicUsize;
+        let head = unsafe { inner.offset(size_of::<QueueEntry<T>>() as isize) } as *mut AtomicUsize;
         let tail = unsafe {
-            inner.offset((size_of::<[Cell<T>; QUEUE_SIZE]>() + size_of::<AtomicUsize>()) as isize)
-                as *mut _
+            inner.offset((size_of::<QueueEntry<T>>() + size_of::<AtomicUsize>()) as isize)
         } as *mut AtomicUsize;
         Queue { log, head, tail }
     }
