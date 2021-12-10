@@ -104,7 +104,7 @@ mod tests {
     }
 
     #[test]
-    fn dequeue() {
+    fn test_dequeue() {
         let queue = Queue::<i32>::new("test");
         assert!(queue.enqueue(1));
         assert_eq!(queue.head(), 1);
