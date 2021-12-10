@@ -25,9 +25,6 @@ where
         let inner = shmem::create_shm(name, buffer_size);
 
         let log = unsafe { &mut *(inner as *mut QueueEntry<T>) };
-        for e in log.iter_mut() {
-            *e = Default::default();
-        }
         let head = unsafe { inner.add(size_of::<QueueEntry<T>>()) } as *mut AtomicUsize;
         let tail = unsafe { inner.add(size_of::<QueueEntry<T>>() + size_of::<AtomicUsize>()) }
             as *mut AtomicUsize;

@@ -10,17 +10,24 @@ use cstr_core::CString;
 /// * `SharedMemory` - shared memory object
 fn open(name: &str, size: usize) -> i32 {
     let c_name = CString::new(name).unwrap();
-    #[cfg(not(test))]
-    let mode = 0666 | libc::IPC_CREAT as u32;
-    #[cfg(test)]
-    let mode = libc::S_IRUSR
-        | libc::S_IWUSR
-        | libc::S_IRGRP
-        | libc::S_IWGRP
-        | libc::S_IROTH
-        | libc::S_IWOTH;
-    let shm_fd = unsafe { libc::shm_open(c_name.as_ptr(), libc::O_CREAT | libc::O_RDWR, mode) };
+    let shm_fd = unsafe {
+        libc::shm_open(
+            c_name.as_ptr(),
+            libc::O_CREAT | libc::O_RDWR,
+            libc::S_IRUSR | libc::S_IWUSR,
+        )
+    };
     if shm_fd < 0 {
+        if unsafe { *(libc::__errno_location() as *mut libc::c_int) } == libc::EEXIST {
+            let shm_fd = unsafe {
+                libc::shm_open(
+                    c_name.as_ptr(),
+                    libc::O_CREAT | libc::O_RDWR,
+                    libc::S_IRUSR | libc::S_IWUSR,
+                )
+            };
+            return shm_fd;
+        }
         log::error!("shm_open failed");
         return -1;
     }
