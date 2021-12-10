@@ -70,10 +70,10 @@ where
     }
 }
 
-#[cfg(test)]
 impl<'a, T> Drop for Queue<'a, T> {
     fn drop(&mut self) {
-        shmem::destroy_shm("test");
+        let size = size_of::<QueueEntry<T>>() + size_of::<AtomicUsize>() * 2;
+        shmem::unlink_shm(self.log.as_ptr() as *mut libc::c_void, size);
     }
 }
 
