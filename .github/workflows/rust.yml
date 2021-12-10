@@ -18,9 +18,12 @@ jobs:
 
     steps:
     - name: Set up a Rust toolchain
-      uses: hecrj/setup-rust-action@v1.3.4
+      uses: actions-rs/toolchain@v1.0.7
       with:
-        rust-version: ${{ matrix.rust }}
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+          components: rustfmt
     - uses: actions/checkout@v2.4.0
     - name: Build
       run: cargo build --verbose
